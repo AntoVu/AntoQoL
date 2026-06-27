@@ -1,0 +1,17 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "net.antoqol.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "refmap": "antoqol.refmap.json",
+  "client": [
+    "MixinTimer",
+    "MixinBlockSlow",
+    "MixinNoDebuff",
+    "MixinEffectRenderer",
+    "MixinInvisibility"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
