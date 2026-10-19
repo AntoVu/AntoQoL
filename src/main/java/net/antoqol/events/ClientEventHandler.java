@@ -9,9 +9,11 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.LevelRenderer;
+import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.item.CrossbowItem;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.UseAnim;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.api.distmarker.Dist;
@@ -19,9 +21,8 @@ import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraftforge.client.event.InputEvent;
 import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
 import net.minecraftforge.client.event.RenderLevelStageEvent;
+import net.minecraftforge.common.ForgeMod;
 import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.event.entity.player.AttackEntityEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import org.lwjgl.glfw.GLFW;
 
@@ -94,8 +95,14 @@ public class ClientEventHandler {
 
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.level == null) return;
-        if (mc.screen != null) return;
         LocalPlayer player = mc.player;
+
+        // Keep running with a screen open so you don't drop out of the air in chat/inventory
+        handleSpeedTick(player);
+        handleFreeFlyTick(player);
+        handleReachTick(player);
+
+        if (mc.screen != null) return;
 
         boolean speedKeyDown     = keySpeed != null && keySpeed.isDown();
         boolean timerKeyDown     = keyTimer != null && keyTimer.isDown();
@@ -128,9 +135,7 @@ public class ClientEventHandler {
         freeFlyKeyWasDown  = freeFlyKeyDown;
         crossbowKeyWasDown = crossbowKeyDown;
 
-        handleSpeedTick(player);
         handleAcceleratorTick(player);
-        handleFreeFlyTick(player);
         handleAutoCrossbowTick(player, mc);
     }
 
@@ -199,6 +204,8 @@ public class ClientEventHandler {
         player.setDeltaMovement(newX, newY, newZ);
         player.fallDistance = 0.0f;
         player.hurtMarked = true;
+        // Fall damage is server-side: report on-ground so the server resets its fall distance
+        player.connection.send(new ServerboundMovePlayerPacket.StatusOnly(true));
     }
 
     private static void enableFreeFly(LocalPlayer player) {
@@ -215,87 +222,61 @@ public class ClientEventHandler {
 
     private static void toggleAutoCrossbow(LocalPlayer player, Minecraft mc) {
         if (autoCrossbowActive) {
-            autoCrossbowActive = false;
-        } else {
-            ItemStack main = player.getMainHandItem();
-            ItemStack off  = player.getOffhandItem();
-            boolean holdingCrossbow =
-                (!main.isEmpty() && main.getItem().getUseAnimation(main) == net.minecraft.world.item.UseAnim.CROSSBOW) ||
-                (!off.isEmpty()  && off.getItem().getUseAnimation(off)   == net.minecraft.world.item.UseAnim.CROSSBOW);
-
-            if (holdingCrossbow) {
-                autoCrossbowActive = true;
-                crossbowTickCounter = 0;
-            }
+            stopAutoCrossbow(mc);
+        } else if (crossbowHand(player) != null) {
+            autoCrossbowActive = true;
+            crossbowTickCounter = 0;
         }
     }
 
+    private static void stopAutoCrossbow(Minecraft mc) {
+        autoCrossbowActive = false;
+        crossbowTickCounter = 0;
+        mc.options.keyUse.setDown(false);
+    }
+
+    private static InteractionHand crossbowHand(LocalPlayer player) {
+        if (player.getMainHandItem().getItem() instanceof CrossbowItem) return InteractionHand.MAIN_HAND;
+        if (player.getOffhandItem().getItem() instanceof CrossbowItem) return InteractionHand.OFF_HAND;
+        return null;
+    }
+
+    // Loop: start charging -> release once fully charged (loads) -> fire after the shot delay
     private static void handleAutoCrossbowTick(LocalPlayer player, Minecraft mc) {
         if (!autoCrossbowActive) return;
 
-        // Auto disable if no crossbow in either hand
-        ItemStack main = player.getMainHandItem();
-        ItemStack off  = player.getOffhandItem();
-        boolean holdingCrossbow =
-            (!main.isEmpty() && main.getItem().getUseAnimation(main) == net.minecraft.world.item.UseAnim.CROSSBOW) ||
-            (!off.isEmpty()  && off.getItem().getUseAnimation(off)   == net.minecraft.world.item.UseAnim.CROSSBOW);
-
-        if (!holdingCrossbow) {
-            autoCrossbowActive = false;
-            crossbowTickCounter = 0;
+        InteractionHand hand = crossbowHand(player);
+        if (hand == null) {
+            stopAutoCrossbow(mc);
             showHUD(mc);
             return;
         }
+        ItemStack stack = player.getItemInHand(hand);
 
-        if (crossbowTickCounter <= 0) {
-            net.minecraft.world.InteractionHand hand =
-                (!main.isEmpty() && main.getItem().getUseAnimation(main) == net.minecraft.world.item.UseAnim.CROSSBOW)
-                    ? net.minecraft.world.InteractionHand.MAIN_HAND
-                    : net.minecraft.world.InteractionHand.OFF_HAND;
-
+        if (CrossbowItem.isCharged(stack)) {
+            if (crossbowTickCounter <= 0) {
+                mc.gameMode.useItem(player, hand);
+                crossbowTickCounter = ModConfig.getCrossbowShotDelay();
+            } else {
+                crossbowTickCounter--;
+            }
+        } else if (!player.isUsingItem()) {
             mc.gameMode.useItem(player, hand);
-            crossbowTickCounter = ModConfig.getCrossbowShotDelay(); // your 1-10 tick config value
-        } else {
-            crossbowTickCounter--;
+        } else if (player.getTicksUsingItem() > CrossbowItem.getChargeDuration(stack)) {
+            // ponytail: one tick past full charge so the server's count also reaches it; raise if loads fail
+            mc.gameMode.releaseUsingItem(player);
         }
+
+        // Vanilla releases the item whenever the use key is up, so hold it while charging
+        mc.options.keyUse.setDown(player.isUsingItem());
     }
 
-    // Entity Reach
-    @SubscribeEvent(priority = EventPriority.HIGHEST)
-    public static void onAttackEntity(AttackEntityEvent event) {
-        // Already handled by vanilla reach — nothing to do
-    }
-
-    @SubscribeEvent(priority = EventPriority.HIGH)
-    public static void onMouseClick(InputEvent.InteractionKeyMappingTriggered event) {
-        if (!ModConfig.isEntityReachEnabled()) return;
-        Minecraft mc = Minecraft.getInstance();
-        if (mc.player == null || mc.level == null) return;
-        LocalPlayer player = mc.player;
-
-        double reach = ModConfig.getEntityReachDistance();
-        Vec3 eyePos = player.getEyePosition(1.0f);
-        Vec3 endPos = eyePos.add(player.getLookAngle().scale(reach));
-
-        net.minecraft.world.phys.EntityHitResult hit =
-            net.minecraft.world.entity.projectile.ProjectileUtil.getEntityHitResult(
-                player, eyePos, endPos,
-                new AABB(eyePos, endPos).inflate(1.0),
-                e -> !e.isSpectator() && e != player,
-                reach * reach
-            );
-
-        if (hit == null || hit.getEntity() == null) return;
-
-        Entity target = hit.getEntity();
-
-        if (event.isAttack()) {
-            mc.gameMode.attack(player, target);
-            event.setCanceled(true);
-        } else if (event.isUseItem()) {
-            mc.gameMode.interact(player, target, event.getHand());
-            event.setCanceled(true);
-        }
+    // Entity Reach: Forge's reach attribute drives vanilla targeting, so walls and invalid targets are respected.
+    // The server still rejects hits beyond ~6 blocks to the hitbox.
+    private static void handleReachTick(LocalPlayer player) {
+        var attr = player.getAttribute(ForgeMod.ENTITY_REACH.get());
+        if (attr == null) return;
+        attr.setBaseValue(ModConfig.isEntityReachEnabled() ? ModConfig.getEntityReachDistance() : 3.0);
     }
 
     // Invisible entity bounding box rendering

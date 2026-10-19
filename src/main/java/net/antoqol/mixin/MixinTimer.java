@@ -1,24 +1,27 @@
 package net.antoqol.mixin;
 
 import net.antoqol.events.ClientEventHandler;
+import net.minecraft.client.Timer;
+import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Mutable;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-@Mixin(targets = "net.minecraft.client.Timer")
+@Mixin(Timer.class)
 public class MixinTimer {
 
-    @Shadow
-    private float f_92521_; // SRG name for msPerTick
+    @Shadow @Final @Mutable
+    private float msPerTick;
 
-    @Inject(method = "m_92525_", at = @At("HEAD")) // SRG name for advanceTime
+    @Inject(method = "advanceTime", at = @At("HEAD"))
     private void scaleTime(long currentTimeMs, CallbackInfoReturnable<Integer> cir) {
         if (ClientEventHandler.isTimerActive()) {
-            f_92521_ = 50.0f / (float) ClientEventHandler.getCurrentTimer();
+            msPerTick = 50.0f / (float) ClientEventHandler.getCurrentTimer();
         } else {
-            f_92521_ = 50.0f;
+            msPerTick = 50.0f;
         }
     }
 }

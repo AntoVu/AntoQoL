@@ -136,7 +136,7 @@ public class ModConfig {
                 .comment(
                     "Ticks to wait between shots when Auto Crossbow is active.",
                     "0 = fire as fast as physically possible.",
-                    "Range: 0-20."
+                    "Range: 0-10."
                 )
                 .defineInRange("crossbowShotDelay", 0, 0, 10);
 
@@ -153,7 +153,7 @@ public class ModConfig {
                 .comment(
                     "Reach distance in blocks for entity interactions and attacks.",
                     "Vanilla survival default is 3.0. Cannot be set below 3.0.",
-                    "Max 20.0."
+                    "Max 10.0. The server ignores hits beyond ~6 blocks."
                 )
                 .defineInRange("entityReachDistance", 3.0, 3.0, 10.0);
 

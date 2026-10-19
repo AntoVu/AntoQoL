@@ -16,15 +16,20 @@ public class MixinBlockSlow {
             net.minecraft.world.level.block.state.BlockState state,
             net.minecraft.world.phys.Vec3 motionMultiplier,
             CallbackInfo ci) {
-        if (ModConfig.isNoSlowdownBlockEnabled()) {
+        if (isLocalPlayer() && ModConfig.isNoSlowdownBlockEnabled()) {
             ci.cancel();
         }
     }
 
     @Inject(method = "getBlockSpeedFactor", at = @At("RETURN"), cancellable = true)
     private void cancelBlockSpeedFactor(CallbackInfoReturnable<Float> cir) {
-        if (ModConfig.isNoSlowdownBlockEnabled()) {
+        if (isLocalPlayer() && ModConfig.isNoSlowdownBlockEnabled()) {
             cir.setReturnValue(1.0f);
         }
+    }
+
+    // Singleplayer shares this JVM with the server, so don't affect mobs or server-side players
+    private boolean isLocalPlayer() {
+        return (Object) this instanceof net.minecraft.client.player.LocalPlayer;
     }
 }

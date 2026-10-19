@@ -15,8 +15,8 @@ java.toolchain.languageVersion = JavaLanguageVersion.of(17)
 minecraft {
     mappings channel: 'official', version: '1.20.1'
     copyIdeResources = true
-	accessTransformer = file('src/main/resources/META-INF/accesstransformer.cfg')
 
+    // Client only: the mod references client classes, so there is no server run
     runs {
         client {
             workingDirectory project.file('run')
@@ -24,14 +24,7 @@ minecraft {
             property 'forge.logging.console.level', 'debug'
             property 'mixin.env.remapRefMap', 'true'
             property 'mixin.env.refMapRemappingFile', "${projectDir}/build/createSrgToMcp/output.srg"
-            mods {
-                antoqol { source sourceSets.main }
-            }
-        }
-        server {
-            workingDirectory project.file('run')
-            property 'forge.logging.markers', 'REGISTRIES'
-            property 'forge.logging.console.level', 'debug'
+            property 'mixin.debug.export', 'true'
             mods {
                 antoqol { source sourceSets.main }
             }
@@ -45,14 +38,12 @@ mixin {
 }
 
 repositories {
-    maven { url "https://maven.shedaniel.me/" }
-}
+    maven { url "https://maven.shedaniel.me/" }}
 
 dependencies {
     minecraft 'net.minecraftforge:forge:1.20.1-47.2.0'
     implementation(fg.deobf("me.shedaniel.cloth:cloth-config-forge:11.1.118"))
-    annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
-}
+    annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'}
 
 jar {
     manifest {

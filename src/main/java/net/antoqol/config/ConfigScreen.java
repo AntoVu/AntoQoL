@@ -144,7 +144,7 @@ public class ConfigScreen {
             .setDefaultValue(0).setMin(0).setMax(10)
             .setTooltip(
                 Component.literal("Ticks to wait between crossbow shots when Auto Crossbow is active."),
-                Component.literal("0 = fire as fast as possible. 20 = 1 second between shots.")
+                Component.literal("0 = fire as fast as possible. 10 = half a second between shots.")
             )
             .setSaveConsumer(v -> ModConfig.CLIENT.crossbowShotDelay.set(v))
             .build());
@@ -161,7 +161,7 @@ public class ConfigScreen {
 
         reach.addEntry(entry
             .startDoubleField(Component.literal("Reach Distance (blocks)"), ModConfig.getEntityReachDistance())
-            .setDefaultValue(3.0).setMin(3.0).setMax(20.0)
+            .setDefaultValue(3.0).setMin(3.0).setMax(10.0)
             .setTooltip(
                 Component.literal("How far you can attack and interact with entities."),
                 Component.literal("Vanilla survival default is 3.0 blocks."),
