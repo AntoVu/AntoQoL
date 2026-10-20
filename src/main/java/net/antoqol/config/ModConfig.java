@@ -13,6 +13,8 @@ public class ModConfig {
         CLIENT_SPEC = builder.build();
     }
 
+    public enum AutoClickerMode { CLIENT, SERVER }
+
     public static class Client {
 
         // Speed
@@ -46,6 +48,9 @@ public class ModConfig {
 
         // Step
         public final ForgeConfigSpec.DoubleValue stepHeight;
+
+        // Auto Clicker
+        public final ForgeConfigSpec.EnumValue<AutoClickerMode> autoClickerMode;
 
         public Client(ForgeConfigSpec.Builder builder) {
 
@@ -173,6 +178,19 @@ public class ModConfig {
                 .defineInRange("stepHeight", 1.0, 0.6, 10.0);
 
             builder.pop();
+
+            // Auto Clicker
+            builder.comment("Auto Clicker Settings").push("autoClicker");
+
+            autoClickerMode = builder
+                .comment(
+                    "When to attack while Auto Clicker is on.",
+                    "CLIENT: as soon as your attack cooldown is full.",
+                    "SERVER: also waits for the server's cooldown, measured from its TPS. Use on laggy servers/realms."
+                )
+                .defineEnum("autoClickerMode", AutoClickerMode.CLIENT);
+
+            builder.pop();
         }
     }
 
@@ -207,4 +225,7 @@ public class ModConfig {
 
     // Step
     public static double getStepHeight()            { return CLIENT.stepHeight.get(); }
+
+    // Auto Clicker
+    public static AutoClickerMode getAutoClickerMode() { return CLIENT.autoClickerMode.get(); }
 }

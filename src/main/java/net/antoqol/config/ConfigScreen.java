@@ -183,6 +183,19 @@ public class ConfigScreen {
             .setSaveConsumer(v -> ModConfig.CLIENT.stepHeight.set(v))
             .build());
 
+        // Auto Clicker
+        ConfigCategory clicker = builder.getOrCreateCategory(Component.literal("Auto Clicker"));
+
+        clicker.addEntry(entry
+            .startEnumSelector(Component.literal("Cooldown Mode"), ModConfig.AutoClickerMode.class, ModConfig.getAutoClickerMode())
+            .setDefaultValue(ModConfig.AutoClickerMode.CLIENT)
+            .setTooltip(
+                Component.literal("CLIENT: attack as soon as your cooldown is full."),
+                Component.literal("SERVER: also wait for the server's cooldown. Use on laggy servers/realms.")
+            )
+            .setSaveConsumer(v -> ModConfig.CLIENT.autoClickerMode.set(v))
+            .build());
+
         return builder.build();
     }
 }

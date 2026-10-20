@@ -15,6 +15,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.CrossbowItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
@@ -45,6 +46,7 @@ public class ClientEventHandler {
     public static KeyMapping keyFreeFly;
     public static KeyMapping keyAutoCrossbow;
     public static KeyMapping keyStep;
+    public static KeyMapping keyAutoClicker;
 
     @SubscribeEvent
     public static void onRegisterKeyMappings(RegisterKeyMappingsEvent event) {
@@ -55,6 +57,7 @@ public class ClientEventHandler {
         keyFreeFly = new KeyMapping("key.antoqol.free_fly", GLFW.GLFW_KEY_UNKNOWN, CATEGORY);
         keyAutoCrossbow = new KeyMapping("key.antoqol.auto_crossbow", GLFW.GLFW_KEY_UNKNOWN, CATEGORY);
         keyStep = new KeyMapping("key.antoqol.step", GLFW.GLFW_KEY_UNKNOWN, CATEGORY);
+        keyAutoClicker = new KeyMapping("key.antoqol.auto_clicker", GLFW.GLFW_KEY_UNKNOWN, CATEGORY);
 
         event.register(keySpeed);
         event.register(keyTimer);
@@ -63,6 +66,7 @@ public class ClientEventHandler {
         event.register(keyFreeFly);
         event.register(keyAutoCrossbow);
         event.register(keyStep);
+        event.register(keyAutoClicker);
     }
 
     // Speed state
@@ -88,12 +92,19 @@ public class ClientEventHandler {
     // Step state
     private static boolean stepActive = false;
 
+    // Auto Clicker state
+    private static boolean autoClickerActive = false;
+    private static long lastClickNanos = 0;
+    private static long lastServerTime = -1, lastServerTimeNanos = 0;
+    private static double serverTps = 20.0;
+
     // Toggle key edge-detection state
     private static boolean speedKeyWasDown = false;
     private static boolean timerKeyWasDown = false;
     private static boolean freeFlyKeyWasDown = false;
     private static boolean crossbowKeyWasDown = false;
     private static boolean stepKeyWasDown = false;
+    private static boolean autoClickerKeyWasDown = false;
 
     // Main client tick
     @SubscribeEvent
@@ -117,6 +128,7 @@ public class ClientEventHandler {
         boolean freeFlyKeyDown   = keyFreeFly != null && keyFreeFly.isDown();
         boolean crossbowKeyDown  = keyAutoCrossbow != null && keyAutoCrossbow.isDown();
         boolean stepKeyDown      = keyStep != null && keyStep.isDown();
+        boolean clickerKeyDown   = keyAutoClicker != null && keyAutoClicker.isDown();
 
         if (speedKeyDown && !speedKeyWasDown) {
             while (keySpeed.consumeClick()) {}
@@ -143,15 +155,22 @@ public class ClientEventHandler {
             stepActive = !stepActive;
             showStatus(mc, "Step", stepActive, String.format("%.1f blocks", ModConfig.getStepHeight()));
         }
+        if (clickerKeyDown && !autoClickerKeyWasDown) {
+            while (keyAutoClicker.consumeClick()) {}
+            autoClickerActive = !autoClickerActive;
+            showStatus(mc, "AutoClicker", autoClickerActive, ModConfig.getAutoClickerMode().name());
+        }
 
         speedKeyWasDown    = speedKeyDown;
         timerKeyWasDown    = timerKeyDown;
         freeFlyKeyWasDown  = freeFlyKeyDown;
         crossbowKeyWasDown = crossbowKeyDown;
         stepKeyWasDown     = stepKeyDown;
+        autoClickerKeyWasDown = clickerKeyDown;
 
         handleAcceleratorTick(player);
         handleAutoCrossbowTick(player, mc);
+        handleAutoClickerTick(player, mc);
     }
 
     // Speed
@@ -284,6 +303,32 @@ public class ClientEventHandler {
 
         // Vanilla releases the item whenever the use key is up, so hold it while charging
         mc.options.keyUse.setDown(player.isUsingItem());
+    }
+
+    // Auto Clicker: attacks the entity under the crosshair once the cooldown is full.
+    // SERVER mode also waits until the server, running at its measured TPS, has ticked a full cooldown since
+    // the last click, so hits on a lagging server aren't sent early and weakened.
+    private static void handleAutoClickerTick(LocalPlayer player, Minecraft mc) {
+        if (!autoClickerActive || mc.hitResult == null || mc.hitResult.getType() != HitResult.Type.ENTITY) return;
+        if (player.getAttackStrengthScale(0.0f) < 1.0f) return;
+        if (ModConfig.getAutoClickerMode() == ModConfig.AutoClickerMode.SERVER) {
+            double serverTicks = (System.nanoTime() - lastClickNanos) / 1e9 * serverTps;
+            if (serverTicks < player.getCurrentItemAttackStrengthDelay()) return;
+        }
+        // Queued click: vanilla's keybind handling performs the attack next tick, same as a real click
+        KeyMapping.click(mc.options.keyAttack.getKey());
+        lastClickNanos = System.nanoTime();
+    }
+
+    // Called by MixinServerTime on each time sync (every 20 server ticks); measures the server's real TPS
+    public static void onServerTime(long gameTime) {
+        long now = System.nanoTime();
+        if (lastServerTime >= 0 && gameTime > lastServerTime) {
+            double tps = (gameTime - lastServerTime) / ((now - lastServerTimeNanos) / 1e9);
+            serverTps = Math.max(1.0, Math.min(20.0, tps));
+        }
+        lastServerTime = gameTime;
+        lastServerTimeNanos = now;
     }
 
     // Entity Reach: Forge's reach attribute drives vanilla targeting, so walls and invalid targets are respected.

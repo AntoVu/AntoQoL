@@ -9,7 +9,8 @@
     "MixinBlockSlow",
     "MixinNoDebuff",
     "MixinEffectRenderer",
-    "MixinInvisibility"
+    "MixinInvisibility",
+    "MixinServerTime"
   ],
   "injectors": {
     "defaultRequire": 1

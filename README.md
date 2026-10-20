@@ -9,3 +9,4 @@
  - No Debuff
  - Entity Reach
  - Step
+ - Auto Clicker
