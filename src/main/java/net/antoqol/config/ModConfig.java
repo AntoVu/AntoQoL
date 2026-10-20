@@ -53,6 +53,9 @@ public class ModConfig {
         public final ForgeConfigSpec.EnumValue<AutoClickerMode> autoClickerMode;
         public final ForgeConfigSpec.IntValue autoClickerDelay;
 
+        // Criticals
+        public final ForgeConfigSpec.BooleanValue criticalsEnabled;
+
         public Client(ForgeConfigSpec.Builder builder) {
 
             // Speed
@@ -199,6 +202,18 @@ public class ModConfig {
                 .defineInRange("autoClickerDelay", 0, 0, 100);
 
             builder.pop();
+
+            // Criticals
+            builder.comment("Criticals Settings").push("criticals");
+
+            criticalsEnabled = builder
+                .comment(
+                    "Make every grounded attack on a living entity a critical hit.",
+                    "Sends a tiny hop to the server before each attack. Sprinting hits still don't crit."
+                )
+                .define("criticalsEnabled", false);
+
+            builder.pop();
         }
     }
 
@@ -237,4 +252,7 @@ public class ModConfig {
     // Auto Clicker
     public static AutoClickerMode getAutoClickerMode() { return CLIENT.autoClickerMode.get(); }
     public static int getAutoClickerDelay()            { return CLIENT.autoClickerDelay.get(); }
+
+    // Criticals
+    public static boolean isCriticalsEnabled()     { return CLIENT.criticalsEnabled.get(); }
 }

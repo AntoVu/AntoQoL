@@ -206,6 +206,19 @@ public class ConfigScreen {
             .setSaveConsumer(v -> ModConfig.CLIENT.autoClickerDelay.set(v))
             .build());
 
+        // Criticals
+        ConfigCategory crits = builder.getOrCreateCategory(Component.literal("Criticals"));
+
+        crits.addEntry(entry
+            .startBooleanToggle(Component.literal("Enable Criticals"), ModConfig.isCriticalsEnabled())
+            .setDefaultValue(false)
+            .setTooltip(
+                Component.literal("Make every grounded attack on a living entity a critical hit."),
+                Component.literal("Sprinting hits still don't crit.")
+            )
+            .setSaveConsumer(v -> ModConfig.CLIENT.criticalsEnabled.set(v))
+            .build());
+
         return builder.build();
     }
 }

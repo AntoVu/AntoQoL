@@ -10,3 +10,4 @@
  - Entity Reach
  - Step
  - Auto Clicker
+ - Criticals

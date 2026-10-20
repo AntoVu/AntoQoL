@@ -10,7 +10,8 @@
     "MixinNoDebuff",
     "MixinEffectRenderer",
     "MixinInvisibility",
-    "MixinServerTime"
+    "MixinServerTime",
+    "MixinCriticals"
   ],
   "injectors": {
     "defaultRequire": 1
