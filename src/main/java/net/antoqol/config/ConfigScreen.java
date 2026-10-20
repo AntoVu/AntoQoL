@@ -170,6 +170,19 @@ public class ConfigScreen {
             .setSaveConsumer(v -> ModConfig.CLIENT.entityReachDistance.set(v))
             .build());
 
+        // Step
+        ConfigCategory step = builder.getOrCreateCategory(Component.literal("Step"));
+
+        step.addEntry(entry
+            .startDoubleField(Component.literal("Step Height (blocks)"), ModConfig.getStepHeight())
+            .setDefaultValue(1.0).setMin(0.6).setMax(10.0)
+            .setTooltip(
+                Component.literal("Max block height walked up without jumping while Step is on."),
+                Component.literal("Vanilla is 0.6 (slabs), horses are 1.0 (full blocks).")
+            )
+            .setSaveConsumer(v -> ModConfig.CLIENT.stepHeight.set(v))
+            .build());
+
         return builder.build();
     }
 }

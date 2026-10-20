@@ -8,3 +8,4 @@
  - No Slowdown
  - No Debuff
  - Entity Reach
+ - Step

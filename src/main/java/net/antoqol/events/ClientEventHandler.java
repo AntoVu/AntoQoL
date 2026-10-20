@@ -44,6 +44,7 @@ public class ClientEventHandler {
     public static KeyMapping keyLargeAccel;
     public static KeyMapping keyFreeFly;
     public static KeyMapping keyAutoCrossbow;
+    public static KeyMapping keyStep;
 
     @SubscribeEvent
     public static void onRegisterKeyMappings(RegisterKeyMappingsEvent event) {
@@ -53,6 +54,7 @@ public class ClientEventHandler {
         keyLargeAccel = new KeyMapping("key.antoqol.large_accel", GLFW.GLFW_KEY_UNKNOWN, CATEGORY);
         keyFreeFly = new KeyMapping("key.antoqol.free_fly", GLFW.GLFW_KEY_UNKNOWN, CATEGORY);
         keyAutoCrossbow = new KeyMapping("key.antoqol.auto_crossbow", GLFW.GLFW_KEY_UNKNOWN, CATEGORY);
+        keyStep = new KeyMapping("key.antoqol.step", GLFW.GLFW_KEY_UNKNOWN, CATEGORY);
 
         event.register(keySpeed);
         event.register(keyTimer);
@@ -60,6 +62,7 @@ public class ClientEventHandler {
         event.register(keyLargeAccel);
         event.register(keyFreeFly);
         event.register(keyAutoCrossbow);
+        event.register(keyStep);
     }
 
     // Speed state
@@ -82,11 +85,15 @@ public class ClientEventHandler {
     private static boolean autoCrossbowActive = false;
     private static int crossbowChargeNeeded  = 0;
 
+    // Step state
+    private static boolean stepActive = false;
+
     // Toggle key edge-detection state
     private static boolean speedKeyWasDown = false;
     private static boolean timerKeyWasDown = false;
     private static boolean freeFlyKeyWasDown = false;
     private static boolean crossbowKeyWasDown = false;
+    private static boolean stepKeyWasDown = false;
 
     // Main client tick
     @SubscribeEvent
@@ -101,6 +108,7 @@ public class ClientEventHandler {
         handleSpeedTick(player);
         handleFreeFlyTick(player);
         handleReachTick(player);
+        handleStepTick(player);
 
         if (mc.screen != null) return;
 
@@ -108,32 +116,39 @@ public class ClientEventHandler {
         boolean timerKeyDown     = keyTimer != null && keyTimer.isDown();
         boolean freeFlyKeyDown   = keyFreeFly != null && keyFreeFly.isDown();
         boolean crossbowKeyDown  = keyAutoCrossbow != null && keyAutoCrossbow.isDown();
+        boolean stepKeyDown      = keyStep != null && keyStep.isDown();
 
         if (speedKeyDown && !speedKeyWasDown) {
             while (keySpeed.consumeClick()) {}
             if (speedActive) disableSpeed(player); else enableSpeed(player);
-            showHUD(mc);
+            showSpeed(mc);
         }
         if (timerKeyDown && !timerKeyWasDown) {
             while (keyTimer.consumeClick()) {}
             if (timerActive) disableTimer(); else enableTimer();
-            showHUD(mc);
+            showTimer(mc);
         }
         if (freeFlyKeyDown && !freeFlyKeyWasDown) {
             while (keyFreeFly.consumeClick()) {}
             if (freeFlyActive) disableFreeFly(player); else enableFreeFly(player);
-            showHUD(mc);
+            showStatus(mc, "FreeFly", freeFlyActive, "ON");
         }
         if (crossbowKeyDown && !crossbowKeyWasDown) {
             while (keyAutoCrossbow.consumeClick()) {}
             toggleAutoCrossbow(player, mc);
-            showHUD(mc);
+            showStatus(mc, "AutoCrossbow", autoCrossbowActive, "ON");
+        }
+        if (stepKeyDown && !stepKeyWasDown) {
+            while (keyStep.consumeClick()) {}
+            stepActive = !stepActive;
+            showStatus(mc, "Step", stepActive, String.format("%.1f blocks", ModConfig.getStepHeight()));
         }
 
         speedKeyWasDown    = speedKeyDown;
         timerKeyWasDown    = timerKeyDown;
         freeFlyKeyWasDown  = freeFlyKeyDown;
         crossbowKeyWasDown = crossbowKeyDown;
+        stepKeyWasDown     = stepKeyDown;
 
         handleAcceleratorTick(player);
         handleAutoCrossbowTick(player, mc);
@@ -248,7 +263,7 @@ public class ClientEventHandler {
         InteractionHand hand = crossbowHand(player);
         if (hand == null) {
             stopAutoCrossbow(mc);
-            showHUD(mc);
+            showStatus(mc, "AutoCrossbow", false, "");
             return;
         }
         ItemStack stack = player.getItemInHand(hand);
@@ -277,6 +292,13 @@ public class ClientEventHandler {
         var attr = player.getAttribute(ForgeMod.ENTITY_REACH.get());
         if (attr == null) return;
         attr.setBaseValue(ModConfig.isEntityReachEnabled() ? ModConfig.getEntityReachDistance() : 3.0);
+    }
+
+    // Step: Forge's step height attribute adds to vanilla's 0.6, so blocks are walked up like a horse, no jump
+    private static void handleStepTick(LocalPlayer player) {
+        var attr = player.getAttribute(ForgeMod.STEP_HEIGHT_ADDITION.get());
+        if (attr == null) return;
+        attr.setBaseValue(stepActive ? ModConfig.getStepHeight() - player.maxUpStep() : 0.0);
     }
 
     // Invisible entity bounding box rendering
@@ -333,41 +355,34 @@ public class ClientEventHandler {
         if (mc.player == null || mc.screen != null) return;
 
         double delta = event.getScrollDelta();
-        boolean handled = false;
-
         if (keySpeed != null && keySpeed.isDown() && speedActive) {
             currentSpeed += delta * ModConfig.getSpeedScrollIncrement();
             if (currentSpeed < 0.1) currentSpeed = 0.1;
             event.setCanceled(true);
-            handled = true;
+            showSpeed(mc);
         }
 
         if (keyTimer != null && keyTimer.isDown() && timerActive) {
             currentTimer += delta * ModConfig.getTimerScrollIncrement();
             if (currentTimer < 0.1) currentTimer = 0.1;
             event.setCanceled(true);
-            handled = true;
+            showTimer(mc);
         }
-
-        if (handled) showHUD(mc);
     }
 
-    // HUD
-    private static void showHUD(Minecraft mc) {
+    // Action bar: shows only the module that just changed
+    private static void showSpeed(Minecraft mc) {
+        showStatus(mc, "Speed", speedActive, String.format("%.2fx", currentSpeed));
+    }
+
+    private static void showTimer(Minecraft mc) {
+        showStatus(mc, "Timer", timerActive, String.format("%.2fx", currentTimer));
+    }
+
+    private static void showStatus(Minecraft mc, String name, boolean on, String detail) {
         if (mc.player == null) return;
-
-        String speedStr   = speedActive
-            ? String.format("§aSpeed §f%.2fx", currentSpeed) : "§7Speed §cOFF";
-        String timerStr   = timerActive
-            ? String.format("§aTimer §f%.2fx", currentTimer) : "§7Timer §cOFF";
-        String flyStr     = freeFlyActive
-            ? "§aFreeFly §fON" : "§7FreeFly §cOFF";
-        String crossStr   = autoCrossbowActive
-            ? "§aAutoCrossbow §fON" : "§7AutoCrossbow §cOFF";
-
         mc.player.displayClientMessage(
-            net.minecraft.network.chat.Component.literal(
-                speedStr + "  " + timerStr + "  " + flyStr + "  " + crossStr),
+            net.minecraft.network.chat.Component.literal(on ? "§a" + name + " §f" + detail : "§7" + name + " §cOFF"),
             true);
     }
 }

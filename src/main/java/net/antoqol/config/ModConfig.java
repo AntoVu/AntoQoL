@@ -44,6 +44,9 @@ public class ModConfig {
         public final ForgeConfigSpec.BooleanValue entityReachEnabled;
         public final ForgeConfigSpec.DoubleValue entityReachDistance;
 
+        // Step
+        public final ForgeConfigSpec.DoubleValue stepHeight;
+
         public Client(ForgeConfigSpec.Builder builder) {
 
             // Speed
@@ -158,6 +161,18 @@ public class ModConfig {
                 .defineInRange("entityReachDistance", 3.0, 3.0, 10.0);
 
             builder.pop();
+
+            // Step
+            builder.comment("Step Settings").push("step");
+
+            stepHeight = builder
+                .comment(
+                    "Max block height walked up without jumping while Step is toggled on.",
+                    "Vanilla is 0.6 (slabs), horses are 1.0 (full blocks)."
+                )
+                .defineInRange("stepHeight", 1.0, 0.6, 10.0);
+
+            builder.pop();
         }
     }
 
@@ -189,4 +204,7 @@ public class ModConfig {
     // Entity Reach
     public static boolean isEntityReachEnabled()    { return CLIENT.entityReachEnabled.get(); }
     public static double getEntityReachDistance()   { return CLIENT.entityReachDistance.get(); }
+
+    // Step
+    public static double getStepHeight()            { return CLIENT.stepHeight.get(); }
 }
