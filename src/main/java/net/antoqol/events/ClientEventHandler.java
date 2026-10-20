@@ -95,6 +95,7 @@ public class ClientEventHandler {
     // Auto Clicker state
     private static boolean autoClickerActive = false;
     private static long lastClickNanos = 0;
+    private static int clickerReadyTicks = 0;
     private static long lastServerTime = -1, lastServerTimeNanos = 0;
     private static double serverTps = 20.0;
 
@@ -308,16 +309,21 @@ public class ClientEventHandler {
     // Auto Clicker: attacks the entity under the crosshair once the cooldown is full.
     // SERVER mode also waits until the server, running at its measured TPS, has ticked a full cooldown since
     // the last click, so hits on a lagging server aren't sent early and weakened.
+    // The custom delay then counts ticks from the moment the cooldown is up.
     private static void handleAutoClickerTick(LocalPlayer player, Minecraft mc) {
-        if (!autoClickerActive || mc.hitResult == null || mc.hitResult.getType() != HitResult.Type.ENTITY) return;
-        if (player.getAttackStrengthScale(0.0f) < 1.0f) return;
-        if (ModConfig.getAutoClickerMode() == ModConfig.AutoClickerMode.SERVER) {
+        if (!autoClickerActive) return;
+        boolean ready = player.getAttackStrengthScale(0.0f) >= 1.0f;
+        if (ready && ModConfig.getAutoClickerMode() == ModConfig.AutoClickerMode.SERVER) {
             double serverTicks = (System.nanoTime() - lastClickNanos) / 1e9 * serverTps;
-            if (serverTicks < player.getCurrentItemAttackStrengthDelay()) return;
+            ready = serverTicks >= player.getCurrentItemAttackStrengthDelay();
         }
+        if (!ready) { clickerReadyTicks = 0; return; }
+        if (clickerReadyTicks++ < ModConfig.getAutoClickerDelay()) return;
+        if (mc.hitResult == null || mc.hitResult.getType() != HitResult.Type.ENTITY) return;
         // Queued click: vanilla's keybind handling performs the attack next tick, same as a real click
         KeyMapping.click(mc.options.keyAttack.getKey());
         lastClickNanos = System.nanoTime();
+        clickerReadyTicks = 0;
     }
 
     // Called by MixinServerTime on each time sync (every 20 server ticks); measures the server's real TPS

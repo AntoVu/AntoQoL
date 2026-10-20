@@ -196,6 +196,16 @@ public class ConfigScreen {
             .setSaveConsumer(v -> ModConfig.CLIENT.autoClickerMode.set(v))
             .build());
 
+        clicker.addEntry(entry
+            .startIntField(Component.literal("Extra Delay (ticks)"), ModConfig.getAutoClickerDelay())
+            .setDefaultValue(0).setMin(0).setMax(100)
+            .setTooltip(
+                Component.literal("Extra ticks to wait after the cooldown is up before clicking."),
+                Component.literal("0 = click immediately. 20 ticks = 1 second.")
+            )
+            .setSaveConsumer(v -> ModConfig.CLIENT.autoClickerDelay.set(v))
+            .build());
+
         return builder.build();
     }
 }

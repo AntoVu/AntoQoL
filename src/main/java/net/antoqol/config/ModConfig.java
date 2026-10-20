@@ -51,6 +51,7 @@ public class ModConfig {
 
         // Auto Clicker
         public final ForgeConfigSpec.EnumValue<AutoClickerMode> autoClickerMode;
+        public final ForgeConfigSpec.IntValue autoClickerDelay;
 
         public Client(ForgeConfigSpec.Builder builder) {
 
@@ -190,6 +191,13 @@ public class ModConfig {
                 )
                 .defineEnum("autoClickerMode", AutoClickerMode.CLIENT);
 
+            autoClickerDelay = builder
+                .comment(
+                    "Extra ticks to wait after the cooldown is up before clicking. 0 = click immediately.",
+                    "20 ticks = 1 second."
+                )
+                .defineInRange("autoClickerDelay", 0, 0, 100);
+
             builder.pop();
         }
     }
@@ -228,4 +236,5 @@ public class ModConfig {
 
     // Auto Clicker
     public static AutoClickerMode getAutoClickerMode() { return CLIENT.autoClickerMode.get(); }
+    public static int getAutoClickerDelay()            { return CLIENT.autoClickerDelay.get(); }
 }
