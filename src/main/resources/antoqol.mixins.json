@@ -13,7 +13,10 @@
     "MixinServerTime",
     "MixinCriticals",
     "MixinItemSlow",
-    "MixinNoFall"
+    "MixinNoFall",
+    "MixinFreecamCamera",
+    "MixinFreecamTurn",
+    "MixinFreecamHand"
   ],
   "injectors": {
     "defaultRequire": 1

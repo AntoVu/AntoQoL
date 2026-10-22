@@ -236,6 +236,16 @@ public class ConfigScreen {
             .setSaveConsumer(v -> ModConfig.CLIENT.noFallEnabled.set(v))
             .build());
 
+        // Freecam
+        ConfigCategory freecam = builder.getOrCreateCategory(Component.literal("Freecam"));
+
+        freecam.addEntry(entry
+            .startDoubleField(Component.literal("Speed (blocks/tick)"), ModConfig.getFreecamSpeed())
+            .setDefaultValue(1.0).setMin(0.1).setMax(10.0)
+            .setTooltip(Component.literal("Freecam flying speed. 1.0 = 20 blocks per second."))
+            .setSaveConsumer(v -> ModConfig.CLIENT.freecamSpeed.set(v))
+            .build());
+
         return builder.build();
     }
 }

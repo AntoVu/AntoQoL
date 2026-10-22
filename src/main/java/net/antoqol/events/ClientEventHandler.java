@@ -5,11 +5,14 @@ import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.antoqol.config.ModConfig;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.player.Input;
+import net.minecraft.client.player.KeyboardInput;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket;
+import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.CrossbowItem;
@@ -47,6 +50,7 @@ public class ClientEventHandler {
     public static KeyMapping keyAutoCrossbow;
     public static KeyMapping keyStep;
     public static KeyMapping keyAutoClicker;
+    public static KeyMapping keyFreecam;
 
     @SubscribeEvent
     public static void onRegisterKeyMappings(RegisterKeyMappingsEvent event) {
@@ -58,6 +62,7 @@ public class ClientEventHandler {
         keyAutoCrossbow = new KeyMapping("key.antoqol.auto_crossbow", GLFW.GLFW_KEY_UNKNOWN, CATEGORY);
         keyStep = new KeyMapping("key.antoqol.step", GLFW.GLFW_KEY_UNKNOWN, CATEGORY);
         keyAutoClicker = new KeyMapping("key.antoqol.auto_clicker", GLFW.GLFW_KEY_UNKNOWN, CATEGORY);
+        keyFreecam = new KeyMapping("key.antoqol.freecam", GLFW.GLFW_KEY_UNKNOWN, CATEGORY);
 
         event.register(keySpeed);
         event.register(keyTimer);
@@ -67,6 +72,7 @@ public class ClientEventHandler {
         event.register(keyAutoCrossbow);
         event.register(keyStep);
         event.register(keyAutoClicker);
+        event.register(keyFreecam);
     }
 
     // Speed state
@@ -99,6 +105,17 @@ public class ClientEventHandler {
     private static long lastServerTime = -1, lastServerTimeNanos = 0;
     private static double serverTps = 20.0;
 
+    // Freecam state: the camera flies on its own while the player stands still
+    private static boolean freecamActive = false;
+    private static LocalPlayer freecamPlayer = null;
+    private static Vec3 freecamPos = Vec3.ZERO, freecamPrevPos = Vec3.ZERO;
+    private static float freecamYaw = 0, freecamPitch = 0;
+
+    public static boolean isFreecamActive() { return freecamActive; }
+    public static float getFreecamYaw() { return freecamYaw; }
+    public static float getFreecamPitch() { return freecamPitch; }
+    public static Vec3 getFreecamPos(float partialTick) { return freecamPrevPos.lerp(freecamPos, partialTick); }
+
     // Toggle key edge-detection state
     private static boolean speedKeyWasDown = false;
     private static boolean timerKeyWasDown = false;
@@ -106,6 +123,7 @@ public class ClientEventHandler {
     private static boolean crossbowKeyWasDown = false;
     private static boolean stepKeyWasDown = false;
     private static boolean autoClickerKeyWasDown = false;
+    private static boolean freecamKeyWasDown = false;
 
     // Main client tick
     @SubscribeEvent
@@ -121,6 +139,7 @@ public class ClientEventHandler {
         handleFreeFlyTick(player);
         handleReachTick(player);
         handleStepTick(player);
+        handleFreecamTick(player, mc);
 
         if (mc.screen != null) return;
 
@@ -130,6 +149,7 @@ public class ClientEventHandler {
         boolean crossbowKeyDown  = keyAutoCrossbow != null && keyAutoCrossbow.isDown();
         boolean stepKeyDown      = keyStep != null && keyStep.isDown();
         boolean clickerKeyDown   = keyAutoClicker != null && keyAutoClicker.isDown();
+        boolean freecamKeyDown   = keyFreecam != null && keyFreecam.isDown();
 
         if (speedKeyDown && !speedKeyWasDown) {
             while (keySpeed.consumeClick()) {}
@@ -161,6 +181,11 @@ public class ClientEventHandler {
             autoClickerActive = !autoClickerActive;
             showStatus(mc, "AutoClicker", autoClickerActive, ModConfig.getAutoClickerMode().name());
         }
+        if (freecamKeyDown && !freecamKeyWasDown) {
+            while (keyFreecam.consumeClick()) {}
+            if (freecamActive) disableFreecam(player, mc); else enableFreecam(player);
+            showStatus(mc, "Freecam", freecamActive, "ON");
+        }
 
         speedKeyWasDown    = speedKeyDown;
         timerKeyWasDown    = timerKeyDown;
@@ -168,6 +193,7 @@ public class ClientEventHandler {
         crossbowKeyWasDown = crossbowKeyDown;
         stepKeyWasDown     = stepKeyDown;
         autoClickerKeyWasDown = clickerKeyDown;
+        freecamKeyWasDown  = freecamKeyDown;
 
         handleAcceleratorTick(player);
         handleAutoCrossbowTick(player, mc);
@@ -220,23 +246,9 @@ public class ClientEventHandler {
     // Free Fly
     private static void handleFreeFlyTick(LocalPlayer player) {
         if (!freeFlyActive) return;
-        Minecraft mc = Minecraft.getInstance();
 
-        double newY = 0.0;
-        if (mc.options.keyJump.isDown())  newY =  FLY_SPEED;
-        else if (mc.options.keyShift.isDown()) newY = -FLY_SPEED;
-
-        float yawRad = (float) Math.toRadians(player.getYRot());
-        double fwdX = -Math.sin(yawRad), fwdZ = Math.cos(yawRad);
-        double strafeX = Math.cos(yawRad), strafeZ = Math.sin(yawRad);
-        double newX = 0, newZ = 0;
-
-        if (mc.options.keyUp.isDown())    { newX += fwdX * FLY_SPEED;    newZ += fwdZ * FLY_SPEED; }
-        if (mc.options.keyDown.isDown())  { newX -= fwdX * FLY_SPEED;    newZ -= fwdZ * FLY_SPEED; }
-        if (mc.options.keyLeft.isDown())  { newX += strafeX * FLY_SPEED; newZ += strafeZ * FLY_SPEED; }
-        if (mc.options.keyRight.isDown()) { newX -= strafeX * FLY_SPEED; newZ -= strafeZ * FLY_SPEED; }
-
-        player.setDeltaMovement(newX, newY, newZ);
+        // While in freecam the movement keys fly the camera, so the player just hovers
+        player.setDeltaMovement(freecamActive ? Vec3.ZERO : flyVector(player.getYRot(), FLY_SPEED));
         player.fallDistance = 0.0f;
         player.hurtMarked = true;
         // Fall damage is server-side: report on-ground so the server resets its fall distance
@@ -250,6 +262,62 @@ public class ClientEventHandler {
 
     private static void disableFreeFly(LocalPlayer player) {
         freeFlyActive = false;
+    }
+
+    // Creative-style flight velocity from the movement keys: horizontal by yaw, jump/sneak for up/down
+    private static Vec3 flyVector(float yaw, double speed) {
+        Minecraft mc = Minecraft.getInstance();
+
+        double y = 0.0;
+        if (mc.options.keyJump.isDown())  y =  speed;
+        else if (mc.options.keyShift.isDown()) y = -speed;
+
+        float yawRad = (float) Math.toRadians(yaw);
+        double fwdX = -Math.sin(yawRad), fwdZ = Math.cos(yawRad);
+        double strafeX = Math.cos(yawRad), strafeZ = Math.sin(yawRad);
+        double x = 0, z = 0;
+
+        if (mc.options.keyUp.isDown())    { x += fwdX * speed;    z += fwdZ * speed; }
+        if (mc.options.keyDown.isDown())  { x -= fwdX * speed;    z -= fwdZ * speed; }
+        if (mc.options.keyLeft.isDown())  { x += strafeX * speed; z += strafeZ * speed; }
+        if (mc.options.keyRight.isDown()) { x -= strafeX * speed; z -= strafeZ * speed; }
+
+        return new Vec3(x, y, z);
+    }
+
+    // Freecam: an empty Input freezes the player (gravity still applies); the Camera mixin renders from here
+    private static void enableFreecam(LocalPlayer player) {
+        freecamActive = true;
+        freecamPlayer = player;
+        freecamPos = freecamPrevPos = player.getEyePosition();
+        freecamYaw = player.getYRot();
+        freecamPitch = player.getXRot();
+        player.input = new Input();
+    }
+
+    private static void disableFreecam(LocalPlayer player, Minecraft mc) {
+        freecamActive = false;
+        freecamPlayer = null;
+        player.input = new KeyboardInput(mc.options);
+    }
+
+    private static void handleFreecamTick(LocalPlayer player, Minecraft mc) {
+        if (!freecamActive) return;
+        // A respawn or dimension change creates a new player with normal input
+        if (player != freecamPlayer) {
+            freecamActive = false;
+            freecamPlayer = null;
+            return;
+        }
+        freecamPrevPos = freecamPos;
+        // No movement while typing in chat etc.; the key states aren't cleared for every screen
+        if (mc.screen == null) freecamPos = freecamPos.add(flyVector(freecamYaw, ModConfig.getFreecamSpeed()));
+    }
+
+    // Called by MixinFreecamTurn with the mouse delta, scaled like Entity.turn
+    public static void turnFreecam(double yRot, double xRot) {
+        freecamYaw += (float) yRot * 0.15f;
+        freecamPitch = Mth.clamp(freecamPitch + (float) xRot * 0.15f, -90.0f, 90.0f);
     }
 
     // Crossbow Autoclicker

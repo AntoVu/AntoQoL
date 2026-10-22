@@ -60,6 +60,9 @@ public class ModConfig {
         // No Fall
         public final ForgeConfigSpec.BooleanValue noFallEnabled;
 
+        // Freecam
+        public final ForgeConfigSpec.DoubleValue freecamSpeed;
+
         public Client(ForgeConfigSpec.Builder builder) {
 
             // Speed
@@ -234,6 +237,15 @@ public class ModConfig {
                 .define("noFallEnabled", false);
 
             builder.pop();
+
+            // Freecam
+            builder.comment("Freecam Settings").push("freecam");
+
+            freecamSpeed = builder
+                .comment("Freecam flying speed in blocks per tick. 1.0 = 20 blocks per second.")
+                .defineInRange("freecamSpeed", 1.0, 0.1, 10.0);
+
+            builder.pop();
         }
     }
 
@@ -279,4 +291,7 @@ public class ModConfig {
 
     // No Fall
     public static boolean isNoFallEnabled()        { return CLIENT.noFallEnabled.get(); }
+
+    // Freecam
+    public static double getFreecamSpeed()         { return CLIENT.freecamSpeed.get(); }
 }
