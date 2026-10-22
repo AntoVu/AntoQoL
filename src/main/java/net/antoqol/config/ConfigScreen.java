@@ -226,6 +226,16 @@ public class ConfigScreen {
             .setSaveConsumer(v -> ModConfig.CLIENT.criticalsEnabled.set(v))
             .build());
 
+        // No Fall
+        ConfigCategory noFall = builder.getOrCreateCategory(Component.literal("No Fall"));
+
+        noFall.addEntry(entry
+            .startBooleanToggle(Component.literal("Enable No Fall"), ModConfig.isNoFallEnabled())
+            .setDefaultValue(false)
+            .setTooltip(Component.literal("Prevent fall damage. Elytra flight is not affected."))
+            .setSaveConsumer(v -> ModConfig.CLIENT.noFallEnabled.set(v))
+            .build());
+
         return builder.build();
     }
 }

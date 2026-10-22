@@ -57,6 +57,9 @@ public class ModConfig {
         // Criticals
         public final ForgeConfigSpec.BooleanValue criticalsEnabled;
 
+        // No Fall
+        public final ForgeConfigSpec.BooleanValue noFallEnabled;
+
         public Client(ForgeConfigSpec.Builder builder) {
 
             // Speed
@@ -219,6 +222,18 @@ public class ModConfig {
                 .define("criticalsEnabled", false);
 
             builder.pop();
+
+            // No Fall
+            builder.comment("No Fall Settings").push("noFall");
+
+            noFallEnabled = builder
+                .comment(
+                    "Prevent fall damage. While falling, tells the server you are on the ground.",
+                    "Elytra flight is not affected."
+                )
+                .define("noFallEnabled", false);
+
+            builder.pop();
         }
     }
 
@@ -261,4 +276,7 @@ public class ModConfig {
 
     // Criticals
     public static boolean isCriticalsEnabled()     { return CLIENT.criticalsEnabled.get(); }
+
+    // No Fall
+    public static boolean isNoFallEnabled()        { return CLIENT.noFallEnabled.get(); }
 }

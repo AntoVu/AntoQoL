@@ -12,7 +12,8 @@
     "MixinInvisibility",
     "MixinServerTime",
     "MixinCriticals",
-    "MixinItemSlow"
+    "MixinItemSlow",
+    "MixinNoFall"
   ],
   "injectors": {
     "defaultRequire": 1
