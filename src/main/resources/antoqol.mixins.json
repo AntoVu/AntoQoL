@@ -11,7 +11,8 @@
     "MixinEffectRenderer",
     "MixinInvisibility",
     "MixinServerTime",
-    "MixinCriticals"
+    "MixinCriticals",
+    "MixinItemSlow"
   ],
   "injectors": {
     "defaultRequire": 1

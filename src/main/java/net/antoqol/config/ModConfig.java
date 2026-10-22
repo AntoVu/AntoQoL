@@ -31,6 +31,7 @@ public class ModConfig {
 
         // No Slowdown
         public final ForgeConfigSpec.BooleanValue noSlowdownBlock;
+        public final ForgeConfigSpec.BooleanValue noSlowdownItem;
 
         // No Debuff
         public final ForgeConfigSpec.BooleanValue noDebuffBlindness;
@@ -106,6 +107,10 @@ public class ModConfig {
                     "Also works with most modded blocks that use vanilla slow mechanisms."
                 )
                 .define("noSlowdownBlock", false);
+
+            noSlowdownItem = builder
+                .comment("Prevent movement slowdown while using items: eating, drinking, bows, crossbows, shields, tridents, spyglass.")
+                .define("noSlowdownItem", false);
 
             builder.pop();
 
@@ -231,6 +236,7 @@ public class ModConfig {
 
     // No Slowdown
     public static boolean isNoSlowdownBlockEnabled()  { return CLIENT.noSlowdownBlock.get(); }
+    public static boolean isNoSlowdownItemEnabled()   { return CLIENT.noSlowdownItem.get(); }
 
     // No Debuff
     public static boolean isNoDebuffBlindnessEnabled()    { return CLIENT.noDebuffBlindness.get(); }

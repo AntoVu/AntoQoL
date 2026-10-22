@@ -91,6 +91,13 @@ public class ConfigScreen {
             .setSaveConsumer(v -> ModConfig.CLIENT.noSlowdownBlock.set(v))
             .build());
 
+        noSlow.addEntry(entry
+            .startBooleanToggle(Component.literal("No Item Slowdown"), ModConfig.isNoSlowdownItemEnabled())
+            .setDefaultValue(false)
+            .setTooltip(Component.literal("Prevents slowdown while eating, drinking, drawing bows/crossbows, blocking with shields, etc."))
+            .setSaveConsumer(v -> ModConfig.CLIENT.noSlowdownItem.set(v))
+            .build());
+
         // No Debuff
         ConfigCategory noDebuff = builder.getOrCreateCategory(Component.literal("No Debuff"));
 
