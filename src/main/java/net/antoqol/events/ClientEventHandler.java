@@ -38,7 +38,6 @@ import net.minecraftforge.client.event.RenderLevelStageEvent;
 import net.minecraftforge.common.ForgeMod;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
-import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.lwjgl.glfw.GLFW;
@@ -472,7 +471,8 @@ public class ClientEventHandler {
     }
 
     // Tracers: one line per ESP target from the crosshair (one block ahead of the camera) to its center,
-    // drawn without depth testing so it shows through walls.
+    // drawn without depth testing so it shows through walls. Plain GL lines (DEBUG_LINES), not the lines
+    // shader: that one sizes lines from a byte-precision normal, which jitters on lines pointing away from the eye.
     // ponytail: view bobbing moves the start point slightly off the crosshair; turn bobbing off if it bothers you
     private static void renderTracers(RenderLevelStageEvent event, Minecraft mc) {
         Camera camera = event.getCamera();
@@ -480,22 +480,19 @@ public class ClientEventHandler {
         Vector3f start = camera.getLookVector();
         float partialTick = event.getPartialTick();
         Matrix4f pose = event.getPoseStack().last().pose();
-        Matrix3f normal = event.getPoseStack().last().normal();
 
         BufferBuilder buffer = Tesselator.getInstance().getBuilder();
-        buffer.begin(VertexFormat.Mode.LINES, DefaultVertexFormat.POSITION_COLOR_NORMAL);
+        buffer.begin(VertexFormat.Mode.DEBUG_LINES, DefaultVertexFormat.POSITION_COLOR);
         for (Entity entity : mc.level.entitiesForRendering()) {
             int color = espColor(entity);
             if (color == -1) continue;
             Vector3f end = entity.getPosition(partialTick).add(0, entity.getBbHeight() / 2, 0).subtract(cam).toVector3f();
-            // The lines shader needs the line's direction as its normal
-            Vector3f dir = new Vector3f(end).sub(start).normalize();
             float r = (color >> 16 & 0xFF) / 255f, g = (color >> 8 & 0xFF) / 255f, b = (color & 0xFF) / 255f;
-            buffer.vertex(pose, start.x(), start.y(), start.z()).color(r, g, b, 1f).normal(normal, dir.x(), dir.y(), dir.z()).endVertex();
-            buffer.vertex(pose, end.x(), end.y(), end.z()).color(r, g, b, 1f).normal(normal, dir.x(), dir.y(), dir.z()).endVertex();
+            buffer.vertex(pose, start.x(), start.y(), start.z()).color(r, g, b, 1f).endVertex();
+            buffer.vertex(pose, end.x(), end.y(), end.z()).color(r, g, b, 1f).endVertex();
         }
 
-        RenderSystem.setShader(GameRenderer::getRendertypeLinesShader);
+        RenderSystem.setShader(GameRenderer::getPositionColorShader);
         RenderSystem.lineWidth(2.0f);
         RenderSystem.disableDepthTest();
         Tesselator.getInstance().end();
