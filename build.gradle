@@ -66,6 +66,13 @@ jar {
     }
 }
 
+// Fills ${version} in mods.toml; file.jarVersion only works from a built jar, not the dev client
+processResources {
+    inputs.property 'version', version
+    // Plain replace, not expand(): the template engine would turn the description's \n escape into a newline
+    filesMatching('META-INF/mods.toml') { filter { it.replace('${version}', project.version.toString()) } }
+}
+
 jar.finalizedBy('reobfJar')
 
 publishing {

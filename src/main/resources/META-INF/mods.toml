@@ -25,9 +25,6 @@ license="MIT"
 
 [[mods]]
 modId="antoqol"
-version="${file.jarVersion}"
+version="${version}"
 displayName="AntoQoL"
-description='''
-Quality of life mod.
-Client-side only - no server install required.
-'''
+description="Quality of life mod.\nClient-side only - no server install required."
