@@ -573,7 +573,7 @@ public class ClientEventHandler {
     private static void showStatus(Minecraft mc, String name, boolean on, String detail) {
         if (mc.player == null) return;
         mc.player.displayClientMessage(
-            net.minecraft.network.chat.Component.literal(on ? "§f" + name + " §a" + detail : "§7" + name + " §cOFF"),
+            net.minecraft.network.chat.Component.literal(on ? "§7" + name + " §a" + detail : "§7" + name + " §cOFF"),
             true);
     }
 }
