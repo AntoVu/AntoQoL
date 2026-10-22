@@ -63,6 +63,13 @@ public class ModConfig {
         // Freecam
         public final ForgeConfigSpec.DoubleValue freecamSpeed;
 
+        // ESP
+        public final ForgeConfigSpec.BooleanValue espPlayers;
+        public final ForgeConfigSpec.ConfigValue<String> espPlayerColor;
+        public final ForgeConfigSpec.ConfigValue<String> espEntities;
+        public final ForgeConfigSpec.ConfigValue<String> espEntityColor;
+        public final ForgeConfigSpec.BooleanValue espTracers;
+
         public Client(ForgeConfigSpec.Builder builder) {
 
             // Speed
@@ -246,7 +253,44 @@ public class ModConfig {
                 .defineInRange("freecamSpeed", 1.0, 0.1, 10.0);
 
             builder.pop();
+
+            // ESP
+            builder.comment("ESP Settings: glowing outlines (visible through walls) and tracers.").push("esp");
+
+            espPlayers = builder
+                .comment("Outline other players.")
+                .define("espPlayers", false);
+
+            espPlayerColor = builder
+                .comment("Player outline color as a hex code, e.g. #FF0000.")
+                .define("espPlayerColor", "#FF0000", ModConfig::isHexColor);
+
+            espEntities = builder
+                .comment(
+                    "Entity IDs to outline, separated by spaces. Modded entities work too. Empty = off.",
+                    "Example: minecraft:pig mod1:modded_entity (the minecraft: prefix is optional)."
+                )
+                .define("espEntities", "", o -> o instanceof String);
+
+            espEntityColor = builder
+                .comment("Outline color for the listed entities as a hex code, e.g. #00FF00.")
+                .define("espEntityColor", "#00FF00", ModConfig::isHexColor);
+
+            espTracers = builder
+                .comment("Draw a line from the crosshair to every outlined entity, in its outline color.")
+                .define("espTracers", false);
+
+            builder.pop();
         }
+    }
+
+    private static boolean isHexColor(Object o) {
+        return o instanceof String s && s.matches("#?[0-9a-fA-F]{6}");
+    }
+
+    // "#RRGGBB" -> 0xRRGGBB; the spec validator guarantees the format
+    private static int parseColor(String s) {
+        return Integer.parseInt(s.startsWith("#") ? s.substring(1) : s, 16);
     }
 
     // Speed
@@ -294,4 +338,11 @@ public class ModConfig {
 
     // Freecam
     public static double getFreecamSpeed()         { return CLIENT.freecamSpeed.get(); }
+
+    // ESP
+    public static boolean isEspPlayersEnabled()    { return CLIENT.espPlayers.get(); }
+    public static int getEspPlayerColor()          { return parseColor(CLIENT.espPlayerColor.get()); }
+    public static String getEspEntities()          { return CLIENT.espEntities.get(); }
+    public static int getEspEntityColor()          { return parseColor(CLIENT.espEntityColor.get()); }
+    public static boolean isEspTracersEnabled()    { return CLIENT.espTracers.get(); }
 }

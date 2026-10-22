@@ -16,7 +16,9 @@
     "MixinNoFall",
     "MixinFreecamCamera",
     "MixinFreecamTurn",
-    "MixinFreecamHand"
+    "MixinFreecamHand",
+    "MixinEspGlow",
+    "MixinEspColor"
   ],
   "injectors": {
     "defaultRequire": 1

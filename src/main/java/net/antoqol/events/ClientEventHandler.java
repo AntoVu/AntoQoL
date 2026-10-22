@@ -1,20 +1,30 @@
 package net.antoqol.events;
 
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.BufferBuilder;
+import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.Tesselator;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.mojang.blaze3d.vertex.VertexFormat;
 import net.antoqol.config.ModConfig;
+import net.minecraft.client.Camera;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.Input;
 import net.minecraft.client.player.KeyboardInput;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.CrossbowItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.AABB;
@@ -28,10 +38,16 @@ import net.minecraftforge.client.event.RenderLevelStageEvent;
 import net.minecraftforge.common.ForgeMod;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
+import org.joml.Matrix3f;
+import org.joml.Matrix4f;
+import org.joml.Vector3f;
 import org.lwjgl.glfw.GLFW;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Locale;
+import java.util.Set;
 
 @OnlyIn(Dist.CLIENT)
 public class ClientEventHandler {
@@ -115,6 +131,10 @@ public class ClientEventHandler {
     public static float getFreecamYaw() { return freecamYaw; }
     public static float getFreecamPitch() { return freecamPitch; }
     public static Vec3 getFreecamPos(float partialTick) { return freecamPrevPos.lerp(freecamPos, partialTick); }
+
+    // ESP state: the entity list is parsed once per config change
+    private static String espEntitiesRaw = null;
+    private static Set<ResourceLocation> espEntityIds = Set.of();
 
     // Toggle key edge-detection state
     private static boolean speedKeyWasDown = false;
@@ -420,15 +440,70 @@ public class ClientEventHandler {
         attr.setBaseValue(stepActive ? ModConfig.getStepHeight() - player.maxUpStep() : 0.0);
     }
 
-    // Invisible entity bounding box rendering
+    // ESP: outline color for an entity, or -1 if it isn't a target. Used by the glow mixins and tracers.
+    public static int espColor(Entity entity) {
+        if (entity == Minecraft.getInstance().player) return -1;
+        if (entity instanceof Player && ModConfig.isEspPlayersEnabled()) return ModConfig.getEspPlayerColor();
+
+        String raw = ModConfig.getEspEntities();
+        if (!raw.equals(espEntitiesRaw)) {
+            Set<ResourceLocation> ids = new HashSet<>();
+            for (String s : raw.trim().split("\\s+")) {
+                // tryParse adds the minecraft: namespace when it's left out and skips invalid IDs
+                ResourceLocation id = s.isEmpty() ? null : ResourceLocation.tryParse(s.toLowerCase(Locale.ROOT));
+                if (id != null) ids.add(id);
+            }
+            espEntityIds = ids;
+            espEntitiesRaw = raw;
+        }
+        if (espEntityIds.isEmpty()) return -1;
+        return espEntityIds.contains(EntityType.getKey(entity.getType())) ? ModConfig.getEspEntityColor() : -1;
+    }
+
     @SubscribeEvent
     public static void onRenderLevel(RenderLevelStageEvent event) {
         if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_ENTITIES) return;
-        if (!ModConfig.isNoDebuffInvisibilityEnabled()) return;
 
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null || mc.player == null) return;
 
+        if (ModConfig.isEspTracersEnabled()) renderTracers(event, mc);
+        if (ModConfig.isNoDebuffInvisibilityEnabled()) renderInvisibleBoxes(event, mc);
+    }
+
+    // Tracers: one line per ESP target from the crosshair (one block ahead of the camera) to its center,
+    // drawn without depth testing so it shows through walls.
+    // ponytail: view bobbing moves the start point slightly off the crosshair; turn bobbing off if it bothers you
+    private static void renderTracers(RenderLevelStageEvent event, Minecraft mc) {
+        Camera camera = event.getCamera();
+        Vec3 cam = camera.getPosition();
+        Vector3f start = camera.getLookVector();
+        float partialTick = event.getPartialTick();
+        Matrix4f pose = event.getPoseStack().last().pose();
+        Matrix3f normal = event.getPoseStack().last().normal();
+
+        BufferBuilder buffer = Tesselator.getInstance().getBuilder();
+        buffer.begin(VertexFormat.Mode.LINES, DefaultVertexFormat.POSITION_COLOR_NORMAL);
+        for (Entity entity : mc.level.entitiesForRendering()) {
+            int color = espColor(entity);
+            if (color == -1) continue;
+            Vector3f end = entity.getPosition(partialTick).add(0, entity.getBbHeight() / 2, 0).subtract(cam).toVector3f();
+            // The lines shader needs the line's direction as its normal
+            Vector3f dir = new Vector3f(end).sub(start).normalize();
+            float r = (color >> 16 & 0xFF) / 255f, g = (color >> 8 & 0xFF) / 255f, b = (color & 0xFF) / 255f;
+            buffer.vertex(pose, start.x(), start.y(), start.z()).color(r, g, b, 1f).normal(normal, dir.x(), dir.y(), dir.z()).endVertex();
+            buffer.vertex(pose, end.x(), end.y(), end.z()).color(r, g, b, 1f).normal(normal, dir.x(), dir.y(), dir.z()).endVertex();
+        }
+
+        RenderSystem.setShader(GameRenderer::getRendertypeLinesShader);
+        RenderSystem.lineWidth(2.0f);
+        RenderSystem.disableDepthTest();
+        Tesselator.getInstance().end();
+        RenderSystem.enableDepthTest();
+    }
+
+    // Invisible entity bounding box rendering
+    private static void renderInvisibleBoxes(RenderLevelStageEvent event, Minecraft mc) {
         // Get all entities in the level
         List<Entity> entities = new ArrayList<>();
         for (Entity e : mc.level.entitiesForRendering()) {

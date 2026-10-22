@@ -246,6 +246,45 @@ public class ConfigScreen {
             .setSaveConsumer(v -> ModConfig.CLIENT.freecamSpeed.set(v))
             .build());
 
+        // ESP
+        ConfigCategory esp = builder.getOrCreateCategory(Component.literal("ESP"));
+
+        esp.addEntry(entry
+            .startBooleanToggle(Component.literal("Players"), ModConfig.isEspPlayersEnabled())
+            .setDefaultValue(false)
+            .setTooltip(Component.literal("Outline other players, visible through walls."))
+            .setSaveConsumer(v -> ModConfig.CLIENT.espPlayers.set(v))
+            .build());
+
+        esp.addEntry(entry
+            .startColorField(Component.literal("Player Color"), ModConfig.getEspPlayerColor())
+            .setDefaultValue(0xFF0000)
+            .setSaveConsumer(v -> ModConfig.CLIENT.espPlayerColor.set(String.format("#%06X", v)))
+            .build());
+
+        esp.addEntry(entry
+            .startStrField(Component.literal("Entities"), ModConfig.getEspEntities())
+            .setDefaultValue("")
+            .setTooltip(
+                Component.literal("Entity IDs to outline, separated by spaces. Modded entities work too."),
+                Component.literal("Example: minecraft:pig mod1:modded_entity")
+            )
+            .setSaveConsumer(v -> ModConfig.CLIENT.espEntities.set(v))
+            .build());
+
+        esp.addEntry(entry
+            .startColorField(Component.literal("Entity Color"), ModConfig.getEspEntityColor())
+            .setDefaultValue(0x00FF00)
+            .setSaveConsumer(v -> ModConfig.CLIENT.espEntityColor.set(String.format("#%06X", v)))
+            .build());
+
+        esp.addEntry(entry
+            .startBooleanToggle(Component.literal("Tracers"), ModConfig.isEspTracersEnabled())
+            .setDefaultValue(false)
+            .setTooltip(Component.literal("Draw a line from the crosshair to every outlined entity."))
+            .setSaveConsumer(v -> ModConfig.CLIENT.espTracers.set(v))
+            .build());
+
         return builder.build();
     }
 }
