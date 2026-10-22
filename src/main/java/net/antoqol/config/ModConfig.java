@@ -64,6 +64,7 @@ public class ModConfig {
         public final ForgeConfigSpec.DoubleValue freecamSpeed;
 
         // ESP
+        public final ForgeConfigSpec.BooleanValue espEnabled;
         public final ForgeConfigSpec.BooleanValue espPlayers;
         public final ForgeConfigSpec.ConfigValue<String> espPlayerColor;
         public final ForgeConfigSpec.ConfigValue<String> espEntities;
@@ -260,6 +261,10 @@ public class ModConfig {
             // ESP
             builder.comment("ESP Settings: glowing outlines (visible through walls) and tracers.").push("esp");
 
+            espEnabled = builder
+                .comment("Master switch for ESP. Off disables all ESP; on enables whichever ESP options below are on.")
+                .define("espEnabled", true);
+
             espPlayers = builder
                 .comment("Outline other players.")
                 .define("espPlayers", false);
@@ -352,7 +357,8 @@ public class ModConfig {
     public static double getFreecamSpeed()         { return CLIENT.freecamSpeed.get(); }
 
     // ESP
-    public static boolean isEspPlayersEnabled()    { return CLIENT.espPlayers.get(); }
+    public static boolean isEspEnabled()           { return CLIENT.espEnabled.get(); }
+    public static boolean isEspPlayersEnabled()   { return CLIENT.espPlayers.get(); }
     public static int getEspPlayerColor()          { return parseColor(CLIENT.espPlayerColor.get()); }
     public static String getEspEntities()          { return CLIENT.espEntities.get(); }
     public static int getEspEntityColor()          { return parseColor(CLIENT.espEntityColor.get()); }

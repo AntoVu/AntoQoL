@@ -250,6 +250,13 @@ public class ConfigScreen {
         ConfigCategory esp = builder.getOrCreateCategory(Component.literal("ESP"));
 
         esp.addEntry(entry
+            .startBooleanToggle(Component.literal("Enable ESP"), ModConfig.isEspEnabled())
+            .setDefaultValue(true)
+            .setTooltip(Component.literal("Master switch. Off disables all ESP; on enables the options below that are on."))
+            .setSaveConsumer(v -> ModConfig.CLIENT.espEnabled.set(v))
+            .build());
+
+        esp.addEntry(entry
             .startBooleanToggle(Component.literal("Players"), ModConfig.isEspPlayersEnabled())
             .setDefaultValue(false)
             .setTooltip(Component.literal("Outline other players, visible through walls."))

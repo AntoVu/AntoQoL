@@ -441,7 +441,7 @@ public class ClientEventHandler {
 
     // ESP: outline color for an entity, or -1 if it isn't a target. Used by the glow mixins and tracers.
     public static int espColor(Entity entity) {
-        if (entity == Minecraft.getInstance().player) return -1;
+        if (!ModConfig.isEspEnabled() || entity == Minecraft.getInstance().player) return -1;
         if (entity instanceof Player && ModConfig.isEspPlayersEnabled()) return ModConfig.getEspPlayerColor();
 
         String raw = ModConfig.getEspEntities();
@@ -466,7 +466,7 @@ public class ClientEventHandler {
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null || mc.player == null) return;
 
-        if (ModConfig.isEspTracersEnabled()) renderTracers(event, mc);
+        if (ModConfig.isEspEnabled() && ModConfig.isEspTracersEnabled()) renderTracers(event, mc);
         if (ModConfig.isNoDebuffInvisibilityEnabled()) renderInvisibleBoxes(event, mc);
     }
 
