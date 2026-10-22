@@ -70,6 +70,9 @@ public class ModConfig {
         public final ForgeConfigSpec.ConfigValue<String> espEntityColor;
         public final ForgeConfigSpec.BooleanValue espTracers;
 
+        // Fullbright
+        public final ForgeConfigSpec.BooleanValue fullbrightEnabled;
+
         public Client(ForgeConfigSpec.Builder builder) {
 
             // Speed
@@ -281,6 +284,15 @@ public class ModConfig {
                 .define("espTracers", false);
 
             builder.pop();
+
+            // Fullbright
+            builder.comment("Fullbright Settings").push("fullbright");
+
+            fullbrightEnabled = builder
+                .comment("See in the dark, exactly like having Night Vision.")
+                .define("fullbrightEnabled", false);
+
+            builder.pop();
         }
     }
 
@@ -345,4 +357,7 @@ public class ModConfig {
     public static String getEspEntities()          { return CLIENT.espEntities.get(); }
     public static int getEspEntityColor()          { return parseColor(CLIENT.espEntityColor.get()); }
     public static boolean isEspTracersEnabled()    { return CLIENT.espTracers.get(); }
+
+    // Fullbright
+    public static boolean isFullbrightEnabled()    { return CLIENT.fullbrightEnabled.get(); }
 }

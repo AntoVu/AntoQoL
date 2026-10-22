@@ -285,6 +285,16 @@ public class ConfigScreen {
             .setSaveConsumer(v -> ModConfig.CLIENT.espTracers.set(v))
             .build());
 
+        // Fullbright
+        ConfigCategory fullbright = builder.getOrCreateCategory(Component.literal("Fullbright"));
+
+        fullbright.addEntry(entry
+            .startBooleanToggle(Component.literal("Enable Fullbright"), ModConfig.isFullbrightEnabled())
+            .setDefaultValue(false)
+            .setTooltip(Component.literal("See in the dark, exactly like having Night Vision."))
+            .setSaveConsumer(v -> ModConfig.CLIENT.fullbrightEnabled.set(v))
+            .build());
+
         return builder.build();
     }
 }

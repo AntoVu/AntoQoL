@@ -16,7 +16,10 @@ public class MixinNoDebuff {
     @Inject(method = "getNightVisionScale", at = @At("HEAD"), cancellable = true)
     private static void cancelNightVision(LivingEntity entity,
             float partialTicks, CallbackInfoReturnable<Float> cir) {
-        if (ModConfig.isNoDebuffNightVisionEnabled()
+        // Fullbright fakes the effect, so there's no instance for vanilla to read the scale from
+        if (ModConfig.isFullbrightEnabled() && entity instanceof net.minecraft.client.player.LocalPlayer) {
+            cir.setReturnValue(1.0f);
+        } else if (ModConfig.isNoDebuffNightVisionEnabled()
                 && entity.hasEffect(MobEffects.NIGHT_VISION)) {
             cir.setReturnValue(0.0f);
         }

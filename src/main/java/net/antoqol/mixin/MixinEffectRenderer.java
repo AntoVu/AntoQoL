@@ -19,6 +19,11 @@ public class MixinEffectRenderer {
         // Check this entity is the local player
         if (!((Object) this instanceof net.minecraft.client.player.LocalPlayer)) return;
 
+        // Fullbright: vanilla's light texture and fog then brighten exactly as with real Night Vision
+        if (effect == MobEffects.NIGHT_VISION && ModConfig.isFullbrightEnabled()) {
+            cir.setReturnValue(true);
+        }
+
         // Blindness
         if (effect == MobEffects.BLINDNESS && ModConfig.isNoDebuffBlindnessEnabled()) {
             cir.setReturnValue(false);
