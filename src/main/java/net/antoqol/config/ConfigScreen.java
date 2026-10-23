@@ -204,6 +204,16 @@ public class ConfigScreen {
             .build());
 
         clicker.addEntry(entry
+            .startEnumSelector(Component.literal("Target"), ModConfig.AutoClickerTarget.class, ModConfig.getAutoClickerTarget())
+            .setDefaultValue(ModConfig.AutoClickerTarget.ENTITY_ONLY)
+            .setTooltip(
+                Component.literal("ENTITY_ONLY: only click when an entity is under the crosshair."),
+                Component.literal("ALWAYS: click whether or not an entity is there.")
+            )
+            .setSaveConsumer(v -> ModConfig.CLIENT.autoClickerTarget.set(v))
+            .build());
+
+        clicker.addEntry(entry
             .startIntField(Component.literal("Extra Delay (ticks)"), ModConfig.getAutoClickerDelay())
             .setDefaultValue(0).setMin(0).setMax(100)
             .setTooltip(

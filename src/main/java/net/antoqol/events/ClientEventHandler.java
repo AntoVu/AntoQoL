@@ -393,7 +393,7 @@ public class ClientEventHandler {
         mc.options.keyUse.setDown(player.isUsingItem());
     }
 
-    // Auto Clicker: attacks the entity under the crosshair once the cooldown is full.
+    // Auto Clicker: attacks once the cooldown is full; ENTITY_ONLY target also needs an entity under the crosshair.
     // SERVER mode also waits until the server, running at its measured TPS, has ticked a full cooldown since
     // the last click, so hits on a lagging server aren't sent early and weakened.
     // The custom delay then counts ticks from the moment the cooldown is up.
@@ -406,7 +406,8 @@ public class ClientEventHandler {
         }
         if (!ready) { clickerReadyTicks = 0; return; }
         if (clickerReadyTicks++ < ModConfig.getAutoClickerDelay()) return;
-        if (mc.hitResult == null || mc.hitResult.getType() != HitResult.Type.ENTITY) return;
+        if (ModConfig.getAutoClickerTarget() == ModConfig.AutoClickerTarget.ENTITY_ONLY
+            && (mc.hitResult == null || mc.hitResult.getType() != HitResult.Type.ENTITY)) return;
         // Queued click: vanilla's keybind handling performs the attack next tick, same as a real click
         KeyMapping.click(mc.options.keyAttack.getKey());
         lastClickNanos = System.nanoTime();

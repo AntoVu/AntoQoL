@@ -14,6 +14,7 @@ public class ModConfig {
     }
 
     public enum AutoClickerMode { CLIENT, SERVER }
+    public enum AutoClickerTarget { ENTITY_ONLY, ALWAYS }
 
     public static class Client {
 
@@ -52,6 +53,7 @@ public class ModConfig {
 
         // Auto Clicker
         public final ForgeConfigSpec.EnumValue<AutoClickerMode> autoClickerMode;
+        public final ForgeConfigSpec.EnumValue<AutoClickerTarget> autoClickerTarget;
         public final ForgeConfigSpec.IntValue autoClickerDelay;
 
         // Criticals
@@ -216,6 +218,14 @@ public class ModConfig {
                 )
                 .defineEnum("autoClickerMode", AutoClickerMode.CLIENT);
 
+            autoClickerTarget = builder
+                .comment(
+                    "What Auto Clicker clicks at.",
+                    "ENTITY_ONLY: only when an entity is under the crosshair.",
+                    "ALWAYS: clicks whether or not an entity is under the crosshair."
+                )
+                .defineEnum("autoClickerTarget", AutoClickerTarget.ENTITY_ONLY);
+
             autoClickerDelay = builder
                 .comment(
                     "Extra ticks to wait after the cooldown is up before clicking. 0 = click immediately.",
@@ -346,6 +356,7 @@ public class ModConfig {
     // Auto Clicker
     public static AutoClickerMode getAutoClickerMode() { return CLIENT.autoClickerMode.get(); }
     public static int getAutoClickerDelay()            { return CLIENT.autoClickerDelay.get(); }
+    public static AutoClickerTarget getAutoClickerTarget() { return CLIENT.autoClickerTarget.get(); }
 
     // Criticals
     public static boolean isCriticalsEnabled()     { return CLIENT.criticalsEnabled.get(); }
